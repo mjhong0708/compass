@@ -5,7 +5,7 @@ with open("requirements.txt") as f:
 
 setup(
     name="compass",
-    version="0.0.1",
+    version="2022.07.26",
     packages=find_packages(),
     install_requires=requirements,
 )
