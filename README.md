@@ -1,8 +1,6 @@
 # Compass
 
-Collection of personal codes about:
-- DFT/MD molecular simulation interface & utils
-- Utility functions for general python scripting
+Collection of personal codes about utility functions for general python scripting
 
 
 ## Installation
