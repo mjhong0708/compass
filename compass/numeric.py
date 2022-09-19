@@ -1,4 +1,4 @@
-from compass._src.interpolation import interpolate, InterpolationKind
+from compass._src.interpolation import InterpolationKind, interpolate
 from compass._src.smoothing import Smoother
 
 __all__ = [

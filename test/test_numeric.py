@@ -1,8 +1,9 @@
-from compass.numeric import interpolate, Smoother
-from hypothesis import given
-from hypothesis.strategies import integers, floats
 import numpy as np
 import pytest
+from hypothesis import given
+from hypothesis.strategies import floats, integers
+
+from compass.numeric import Smoother, interpolate
 
 
 @given(integers(2, 10))

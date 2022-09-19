@@ -1,7 +1,7 @@
-from scipy.interpolate import interp1d
-
 from typing import Literal, Tuple
+
 import numpy as np
+from scipy.interpolate import interp1d
 
 InterpolationKind = Literal[
     "linear", "nearest", "nearest-up", "zero", "slinear", "quadratic", "cubic", "previous", "next"

@@ -1,7 +1,9 @@
 from typing import Literal
+
 import numpy as np
 from scipy.signal import savgol_filter
-from compass._src.misc import notice_available_args
+
+from compass._src.util import notice_available_args
 
 
 class Smoother:
