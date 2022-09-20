@@ -2,12 +2,18 @@ import functools
 import inspect
 
 
+def try_import(module):
+    try:
+        return __import__(module)
+    except ImportError:
+        raise ImportError("{} not found. Please install {}.".format(module, module))
+
+
 def check_installed(module):
     try:
         __import__(module)
     except ImportError:
-        print("{} not found. Please install {}.".format(module, module))
-        raise
+        raise ImportError("{} not found. Please install {}.".format(module, module))
     del module
 
 
