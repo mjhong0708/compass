@@ -1,0 +1,11 @@
+tolerance {{ tolerance }}
+filetype xyz
+output {{ out_filename }}
+
+
+{% for molecule_file, number in pack_info.items() %}
+structure {{ molecule_file }}
+  number {{ number }}
+  inside box {{ box_repr }}
+end structure
+{% endfor %}
