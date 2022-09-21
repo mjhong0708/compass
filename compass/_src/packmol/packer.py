@@ -52,26 +52,32 @@ class Packer:
                 )
             )
 
-    def _run_packmol(self, tmpdir):
+    def _run_packmol(self, tmpdir: str):
         pwd = Path.cwd()
         os.chdir(tmpdir)
         output = subprocess.check_output("packmol < pack.inp", shell=True)
         os.chdir(pwd)
         return output.decode("utf-8")
 
-    def _read_packed_box(self, sort_result, tmpdir):
+    def _read_packed_box(self, sort_result: bool, tmpdir: str, repack: bool):
         try:
             packed = ase.io.read(f"{tmpdir}/packed.xyz")
         except FileNotFoundError:
             raise RuntimeError("packmol failed to pack molecules.")
         if sort_result:
             packed = ase.build.sort(packed)
-        packed.cell = self.box.to_array()
-        packed.pbc = True
-        packed.center()
+        if repack:
+            packed = self._repack_in_box(packed)
         return packed
 
-    def pack(self, tolerance, sort_result=True, retreive_log=False):
+    def _repack_in_box(self, atoms):
+        new = deepcopy(atoms)
+        new.cell = self.box.to_array()
+        new.pbc = True
+        new.center()
+        return new
+
+    def pack(self, tolerance: float, sort_result: bool = True, repack: bool = True, retreive_log: bool = False):
         box = deepcopy(self.box)
         box.xmin += self.margin
         box.xmax -= self.margin
@@ -85,10 +91,47 @@ class Packer:
             self._write_molecules(tmpdir)
             self._write_input(tmpdir, box, tolerance)
             packmol_output = self._run_packmol(tmpdir)
-            packed = self._read_packed_box(sort_result, tmpdir)
+            packed = self._read_packed_box(sort_result, tmpdir, repack)
             if retreive_log:
                 (pwd / "packmol.log").write_text(packmol_output)
         return packed
+
+    def smart_pack(self, tolerance, sort_result=True, retreive_log=False, step_size=0.1):
+        """Automatically determine the margin to pack molecules.
+        self.margin is ignored.
+
+        Since packmol does not support pbc, we usually need to add a margin to box size, and
+        pack molecules in the box. This method iteratively increases the margin until all
+        the positions of molecules are inside the desiered box.
+        """
+        count = 0
+        packed = self.pack(tolerance, sort_result, False, retreive_log)
+        repacked = self._repack_in_box(packed)
+        min_dist_packed = get_min_dist(packed)
+        min_dist_repacked = get_min_dist(repacked)
+
+        print(f"min_dist: {min_dist_packed:.3f} Angstrom")
+        while not self.box.contains(packed) or min_dist_repacked < min_dist_packed:
+            self.margin += step_size
+            packed = self.pack(tolerance, sort_result, False, retreive_log)
+            repacked = self._repack_in_box(packed)
+            count += 1
+            min_dist_packed = get_min_dist(packed)
+            min_dist_repacked = get_min_dist(repacked)
+            print(f"Iteration {count}: margin = {self.margin}")
+        print(f"Done. Final margin: {self.margin}")
+        packed = self._repack_in_box(packed)
+        return packed
+
+
+def get_min_dist(atoms):
+    if any(atoms.pbc):
+        mic = True
+    else:
+        mic = False
+    dm = atoms.get_all_distances(mic=mic)
+    dm += np.eye(len(atoms)) * 100
+    return dm.min()
 
 
 @dataclass
@@ -145,3 +188,13 @@ class Box:
 
     def to_array(self):
         return np.array([self.xlen, self.ylen, self.zlen])
+
+    def contains(self, atoms):
+        atoms_xmin, atoms_xmax = atoms.positions[:, 0].min(), atoms.positions[:, 0].max()
+        atoms_ymin, atoms_ymax = atoms.positions[:, 1].min(), atoms.positions[:, 1].max()
+        atoms_zmin, atoms_zmax = atoms.positions[:, 2].min(), atoms.positions[:, 2].max()
+
+        is_in_x_range = self.xmin <= atoms_xmin and atoms_xmax <= self.xmax
+        is_in_y_range = self.ymin <= atoms_ymin and atoms_ymax <= self.ymax
+        is_in_z_range = self.zmin <= atoms_zmin and atoms_zmax <= self.zmax
+        return all([is_in_x_range, is_in_y_range, is_in_z_range])
